@@ -17,6 +17,8 @@ In this tutorial, we will cover how to launch op-stack along with nodekit stack,
   - [Terraform](https://terraform.io) installed (see [Install Terraform](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli))
 - For filtering outputs:
   - [jq](https://stedolan.github.io/jq/) (see [Download jq](https://stedolan.github.io/jq/download/))
+- Nix:
+  - https://nixos.org/
 
 **In repository `ansible-avalanche-getting-started`**
 
