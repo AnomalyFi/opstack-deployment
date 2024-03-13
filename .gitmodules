@@ -1,0 +1,6 @@
+[submodule "op-integration"]
+	path = op-integration
+	url = https://github.com/AnomalyFi/op-integration
+[submodule "ansible-avalanche-getting-started"]
+	path = ansible-avalanche-getting-started
+	url = https://github.com/AnomalyFi/ansible-avalanche-getting-started
