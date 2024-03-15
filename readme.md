@@ -20,13 +20,41 @@ In this tutorial, we will cover how to launch op-stack along with nodekit stack,
 - Nix:
   - https://nixos.org/
 
+
+Please run in the root folder(this repository)
+
+```shell
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+Then,
+
 **In repository `ansible-avalanche-getting-started`**
-
-Please run 
-
 ```shell
 ./bin/setup.sh
 ```
+
+Manually creating all the virtual machines are needed, go to repository `ansible-avalanche-getting-started`, run 
+
+```shell
+terraform -chdir=terraform/multipass init
+terraform -chdir=terraform/multipass apply
+```
+
+If above script failed, simply re-run it
+
+
+Finally, run
+```shell
+python main.py deploy
+```
+
+After the deployment, You're good to go!
+
+
+# Manually deployment
 
 to create a python environment, then run following command to install ansible-collections and ansible-roles for deploying `eth-l1` and `nodekit-seq`
 

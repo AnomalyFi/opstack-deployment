@@ -52,9 +52,22 @@ def createAvalancheSubnet(ansibleDir: str, inventoryDir: str) -> str:
     
     return sub.stdout.decode('utf-8')
 
+def setDefaultAvaNodesConfig(ansibleDir: str, inventoryDir: str):
+    avaNodeConfLoc = pjoin(ansibleDir, inventoryDir, 'group_vars/avalanche_nodes.yml')
+    with open(avaNodeConfLoc, 'r+') as f:
+        nodeConf = yaml.safe_load(f)
+        # clean existing tracked subnets and chain configs then assign new
+        nodeConf['avalanchego_track_subnets'] = []
+
+        # clean existing content
+        f.truncate(0)
+        f.seek(0)
+
+        yaml.safe_dump(nodeConf, f)
+    
+
 def updateTrackedSubnetNChainConfig(ansibleDir: str, inventoryDir: str, subnetID: str, chainID: str, ethl1IP: str):
     avaNodeConfLoc = pjoin(ansibleDir, inventoryDir, 'group_vars/avalanche_nodes.yml')
-    print(avaNodeConfLoc)
     with open(avaNodeConfLoc, 'r+') as f:
         nodeConf = yaml.safe_load(f)
         # clean existing tracked subnets and chain configs then assign new
@@ -109,8 +122,10 @@ def restartAvalancheGo(ansibleDir: str, inventoryDir: str):
 
 def deployContractsOnL1(opDir: str, l1RPC: str):
     cmd = ['python', 'bedrock-devnet/main.py', '--monorepo-dir=.', '--deploy-contracts', f'--l1-rpc-url={l1RPC}']
+    cmdStr = ' '.join(cmd)
+    print(cmdStr)
     sub = run_command(
-        ['nix-shell', '--run', ' '.join(cmd)],
+        ['nix-shell', '--run', cmdStr],
         capture_output=False,
         stderr=sys.stderr,
         stdout=sys.stdout,
@@ -132,8 +147,10 @@ def deployNodekitL1(opDir: str, l1RPC: str, seqRPC: str):
            '--launch-nodekit-l1',
            f'--l1-rpc-url={l1RPC}',
            f"--seq-url={seqRPC}"]
+    cmdStr = ' '.join(cmd)
+    print(cmdStr)
     sub = run_command(
-        ['nix-shell', '--run', ' '.join(cmd)],
+        ['nix-shell', '--run', cmdStr],
         capture_output=False,
         stderr=sys.stderr,
         stdout=sys.stdout,
@@ -156,11 +173,14 @@ def deployOPL2(opDir: str, l1RPC: str, l1WS: str, seqRPC: str):
            '--monorepo-dir=.', 
            '--launch-l2',
            f'--l1-rpc-url={l1RPC}',
-           f"--l1-ws-url={l1WS}"
+           f"--l1-ws-url={l1WS}",
            f"--seq-url={seqRPC}"]
+    
+    cmdStr = ' '.join(cmd)
+    print(cmdStr)
 
     sub = run_command(
-        ['nix-shell', '--run', ' '.join(cmd)],
+        ['nix-shell', '--run', cmdStr],
         capture_output=False,
         stderr=sys.stderr,
         stdout=sys.stdout,
@@ -215,7 +235,8 @@ def wait_seq(rpcURL: str, retry=180) -> bool:
     
 # TODO: fetch some blocks here
 def seq_healthy(rpcURL: str) -> bool:
-    resp = requests.post(url=rpcURL,
+    url = pjoin(rpcURL, 'coreapi')
+    resp = requests.post(url=url,
         json={"id":1, "jsonrpc":"2.0", "method": "hypersdk.network", "params":[]}) 
     
     if resp.status_code != 200:
@@ -283,7 +304,6 @@ def getValidatorIPs(terraformWorkingDir: str) -> typing.List[str]:
     validatorIPs = terraOut['validators_ips']['value']
 
     return validatorIPs
-
 
 def run_command(args, check=True, shell=False, cwd=None, env=None, timeout=None, capture_output=False, stdout=None , stderr=None):
     env = env if env else {}

@@ -20,6 +20,9 @@ pjoin = os.path.join
 
 @app.command()
 def deploy():
+    print('reset avalanche node config')
+    utils.setDefaultAvaNodesConfig(state['ansibleDir'], state['inventoryDir'])
+
     print('deploying eth l1')
     utils.deployEthL1(state['ansibleDir'], state['inventoryDir'])
     ethL1IP = utils.getEthL1IP(state['terraformWorkingDir'])
@@ -41,9 +44,10 @@ def deploy():
     seqRPCURL = f"http://{validatorIPs[0]}:9650/ext/bc/{chainID}"
 
     # default timeout is 3mins
-    seqIsUp = utils.wait_seq(seqRPCURL)
+    seqIsUp = False
     cnt = 0
     retry = 3
+    # must restart avalanchego at least once
     while not seqIsUp:
         utils.restartAvalancheGo(state['ansibleDir'], state['inventoryDir'])
         seqIsUp = utils.wait_seq(seqRPCURL)
@@ -56,6 +60,20 @@ def deploy():
     utils.deployContractsOnL1(state['opDir'], ethL1RPC)
     utils.deployNodekitL1(state['opDir'], ethL1RPC, seqRPCURL)
     utils.deployOPL2(state['opDir'], ethL1RPC, ethL1WS, seqRPCURL)
+
+@app.command()
+def launch_l2(chain_id: str):
+    validatorIPs = utils.getValidatorIPs(state['terraformWorkingDir'])
+    seqRPCURL = f"http://{validatorIPs[0]}:9650/ext/bc/{chain_id}"
+    ethL1IP = utils.getEthL1IP(state['terraformWorkingDir'])
+
+    ethL1RPC = f'http://{ethL1IP}:8545'
+    ethL1WS = f'ws://{ethL1IP}:8546'
+    # utils.deployContractsOnL1(state['opDir'], ethL1RPC)
+    utils.deployNodekitL1(state['opDir'], ethL1RPC, seqRPCURL)
+    utils.deployOPL2(state['opDir'], ethL1RPC, ethL1WS, seqRPCURL)
+
+    
 
 @app.command()
 def create_ava_subnet():
@@ -87,6 +105,10 @@ def init():
 @app.command()
 def flags():
     print(state) 
+
+@app.command()
+def seq_healthy(url: str):
+    print(utils.seq_healthy(url))
 
 @app.callback()
 def main(
