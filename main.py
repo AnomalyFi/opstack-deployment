@@ -7,6 +7,7 @@ import utils
 app = typer.Typer()
 state = {
     "ansibleDir": "ansible-avalanche-getting-started",
+    "opDir": "op-integration",
     "cloudProvider": "multipass",
     "terraformWorkingDir": "ansible-avalanche-getting-started/terraform/multipass",
     "seqDownloadAddr": "https://github.com/AnomalyFi/nodekit-seq/releases/download",
@@ -21,11 +22,13 @@ pjoin = os.path.join
 def deploy():
     print('deploying eth l1')
     utils.deployEthL1(state['ansibleDir'], state['inventoryDir'])
-    return
     ethL1IP = utils.getEthL1IP(state['terraformWorkingDir'])
     print('bootstraping avalanchego validators')
     utils.bootstrapValidators(state['ansibleDir'], state['inventoryDir'])
-    print('creating nodekit-seq subnet')
+    # wait bootstraping to be stable
+    print('boostraping finished, waiting 30s to let it become stable to bootstrap a subnet')
+    time.sleep(30)
+    print('creating nodekit-seq subnet, here we are not directing stdout and stderr since we need to capture output')
     log = utils.createAvalancheSubnet(state['ansibleDir'], state["inventoryDir"])
     chainID = utils.getChainIDFromCreationLog(log)
     subnetID = utils.getSubnetIDfromCreationLog(log)
@@ -37,17 +40,31 @@ def deploy():
     validatorIPs = utils.getValidatorIPs(state['terraformWorkingDir'])
     seqRPCURL = f"http://{validatorIPs[0]}:9650/ext/bc/{chainID}"
 
-    seqIsUp = False
+    # default timeout is 3mins
+    seqIsUp = utils.wait_seq(seqRPCURL)
     cnt = 0
     retry = 3
     while not seqIsUp:
         utils.restartAvalancheGo(state['ansibleDir'], state['inventoryDir'])
         seqIsUp = utils.wait_seq(seqRPCURL)
         cnt += 1
-        if cnt > retry:
+        if cnt >= retry:
             print("cannot launch nodekit-seq")
+        
+    ethL1RPC = f'http://{ethL1IP}:8545'
+    ethL1WS = f'ws://{ethL1IP}:8546'
+    utils.deployContractsOnL1(state['opDir'], ethL1RPC)
+    utils.deployNodekitL1(state['opDir'], ethL1RPC, seqRPCURL)
+    utils.deployOPL2(state['opDir'], ethL1RPC, ethL1WS, seqRPCURL)
 
+@app.command()
+def create_ava_subnet():
+    log = utils.createAvalancheSubnet(state['ansibleDir'], state['inventoryDir'])
+    print(log)
     
+@app.command()
+def restart_avalanchego():
+    utils.restartAvalancheGo(state['ansibleDir'], state['inventoryDir'])
 
 @app.command()
 def hello(name: str):

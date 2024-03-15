@@ -30,7 +30,9 @@ def bootstrapValidators(ansibleDir: str, inventoryDir: str):
     sub = run_command(
         [ansiblePlaybookBin, playbook, '-i', inventoryDir],
         cwd=ansibleDir,
-        capture_output=True
+        capture_output=False,
+        stdout=sys.stdout,
+        stderr=sys.stderr
     )
 
     if sub.returncode != 0:
@@ -42,13 +44,13 @@ def createAvalancheSubnet(ansibleDir: str, inventoryDir: str) -> str:
     sub = run_command(
         [ansiblePlaybookBin, playbook, '-i', inventoryDir],
         cwd=ansibleDir,
-        capture_output=True
+        capture_output=True,
     )
 
     if sub.returncode != 0:
         raise Exception(f" unable to create nodekit-seq subnet, reason: {sub.stderr}")
     
-    return sub.stdout
+    return sub.stdout.decode('utf-8')
 
 def updateTrackedSubnetNChainConfig(ansibleDir: str, inventoryDir: str, subnetID: str, chainID: str, ethl1IP: str):
     avaNodeConfLoc = pjoin(ansibleDir, inventoryDir, 'group_vars/avalanche_nodes.yml')
@@ -57,10 +59,19 @@ def updateTrackedSubnetNChainConfig(ansibleDir: str, inventoryDir: str, subnetID
         nodeConf = yaml.safe_load(f)
         # clean existing tracked subnets and chain configs then assign new
         nodeConf['avalanchego_track_subnets'] = [subnetID]
+        nodeConf['avalanchego_subnets_configs'] = {}
+        nodeConf['avalanchego_subnets_configs'][subnetID] = {
+            'proposerMinBlockDelay': 0,
+            'proposerNumHistoricalBlocks': 5000,
+            'consensusParameters': {
+                'maxItemProcessingTime': 300000000000
+            }
+        }
+
         nodeConf['avalanchego_chains_configs'] = {}
         nodeConf['avalanchego_chains_configs'][chainID] = {
             'ethRPCAddr': f'http://{ethl1IP}:8545',
-            'ethWSAddr': f'ws://{ethl1IP}:8545'
+            'ethWSAddr': f'ws://{ethl1IP}:8546'
         }
 
         # clean existing content
@@ -75,18 +86,90 @@ def provisionAvaNodes(ansibleDir: str, inventoryDir: str):
     sub = run_command(
         [ansiblePlaybookBin, playbook, '-i', inventoryDir],
         cwd=ansibleDir,
-        capture_output=True
+        capture_output=False,
+        stdout=sys.stdout,
+        stderr=sys.stderr
     )
 
     if sub.returncode != 0:
         raise Exception(f" unable to provision avalanche nodes, reason: {sub.stderr}")
 
 def restartAvalancheGo(ansibleDir: str, inventoryDir: str):
-    ansibleBin = './venv/bin/ansible'
-    run_command(
-        [ansibleBin, '-i', inventoryDir, 'all', '-b', '-m', 'shell', '-a', "sudo systemctl restart avalanchego"],
-        cwd=ansibleDir
+    ansibleBin = '.venv/bin/ansible'
+    try:
+        run_command(
+            [ansibleBin, '-i', inventoryDir, 'all', '-b', '-m', 'shell', '-a', "sudo systemctl restart avalanchego"],
+            cwd=ansibleDir,
+            stdout=sys.stdout,
+            stderr=sys.stderr
+        )
+        # eth-l1 vm doesn't not contain avalanchego so there will be error executing the binary
+    except Exception as e:
+        pass
+
+def deployContractsOnL1(opDir: str, l1RPC: str):
+    cmd = ['python', 'bedrock-devnet/main.py', '--monorepo-dir=.', '--deploy-contracts', f'--l1-rpc-url={l1RPC}']
+    sub = run_command(
+        ['nix-shell', '--run', ' '.join(cmd)],
+        capture_output=False,
+        stderr=sys.stderr,
+        stdout=sys.stdout,
+        cwd=opDir
     )
+
+    if sub.returncode != 0:
+        raise Exception(f"unable to deploy contracts on ETH L1, reason: {sub.stderr}")
+
+# python bedrock-devnet/main.py 
+# --monorepo-dir=. 
+# --launch-nodekit-l1 
+# --l1-rpc-url="http://10.153.238.182:8545" 
+# --seq-url="http://10.153.238.150:9650/ext/bc/24ummBEhg4mA8DV1ojNjpHpQVipSiVZUB1zhcmgLF7woWFmgDz"
+def deployNodekitL1(opDir: str, l1RPC: str, seqRPC: str):
+    cmd = ['python', 
+           'bedrock-devnet/main.py', 
+           '--monorepo-dir=.', 
+           '--launch-nodekit-l1',
+           f'--l1-rpc-url={l1RPC}',
+           f"--seq-url={seqRPC}"]
+    sub = run_command(
+        ['nix-shell', '--run', ' '.join(cmd)],
+        capture_output=False,
+        stderr=sys.stderr,
+        stdout=sys.stdout,
+        cwd=opDir
+    )
+
+    if sub.returncode != 0:
+        raise Exception(f"unable to deploy contracts on ETH L1, reason: {sub.stderr}")
+    
+# python 
+# bedrock-devnet/main.py 
+# --monorepo-dir=. 
+# --launch-l2 
+# --l1-rpc-url="http://10.153.238.182:8545" 
+# --l1-ws-url="ws://10.153.238.182:8546"
+# --seq-url="http://10.153.238.150:9650/ext/bc/24ummBEhg4mA8DV1ojNjpHpQVipSiVZUB1zhcmgLF7woWFmgDz"
+def deployOPL2(opDir: str, l1RPC: str, l1WS: str, seqRPC: str):
+    cmd = ['python', 
+           'bedrock-devnet/main.py', 
+           '--monorepo-dir=.', 
+           '--launch-l2',
+           f'--l1-rpc-url={l1RPC}',
+           f"--l1-ws-url={l1WS}"
+           f"--seq-url={seqRPC}"]
+
+    sub = run_command(
+        ['nix-shell', '--run', ' '.join(cmd)],
+        capture_output=False,
+        stderr=sys.stderr,
+        stdout=sys.stdout,
+        cwd=opDir
+    )
+
+    if sub.returncode != 0:
+        raise Exception(f"unable to deploy contracts on ETH L1, reason: {sub.stderr}")
+    
 
 def download_seq(download_url: str, version: str):
     file = f"tokenvm_{version}_linux_amd64.tar.gz"
@@ -115,9 +198,9 @@ def download_seq(download_url: str, version: str):
     if sub.returncode != 0:
         raise Exception(f"cannot untar nodekit files, reason: {sub.stderr}")
 
-def wait_seq(rpcURL: str, retry=20) -> bool:
+
+def wait_seq(rpcURL: str, retry=180) -> bool:
     cnt = 0
-    retry = 20
     while True:
         print(f'cheaking if seq is launched ({cnt}/{retry})')
         healthy = seq_healthy(rpcURL) 
