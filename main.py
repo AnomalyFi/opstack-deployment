@@ -121,11 +121,11 @@ def main(
         prompt_required=False,
         default="multipass"
     ),
-    inventoryDir: str = typer.Option(
-        prompt="inventory folder of ansible configs",
-        prompt_required=False,
-        default="inventories/local"
-    ),
+    # inventoryDir: str = typer.Option(
+    #     prompt="inventory folder of ansible configs",
+    #     prompt_required=False,
+    #     default="inventories/local"
+    # ),
     seqDownloadAddr: str = typer.Option(
         prompt="nodekit-seq downloading address",
         prompt_required=False,
@@ -139,8 +139,12 @@ def main(
 ):
     if cloudProvider == "multipass":
         terraformWorkingDir = pjoin(ansibleDir, "terraform/multipass")
+        inventoryDir = "inventories/local"
+        print('using multipass cloud provider')
     elif cloudProvider == "aws":
         terraformWorkingDir = pjoin(ansibleDir, "terraform/aws")
+        inventoryDir = "inventories/aws"
+        print('using aws cloud provider')
     else:
         raise Exception("unsupported cloud provider")
 

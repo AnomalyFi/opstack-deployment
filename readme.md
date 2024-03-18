@@ -36,19 +36,34 @@ Then,
 ./bin/setup.sh
 ```
 
-Manually creating all the virtual machines are needed, go to repository `ansible-avalanche-getting-started`, run 
+Manually creating all the virtual machines are needed, there are two potions: 
+1. Run VMs locally with `multipass`
+2. Run VMs provided by AWS
+
+go to repository `ansible-avalanche-getting-started`, 
+
+Multipass VMs:
 
 ```shell
 terraform -chdir=terraform/multipass init
 terraform -chdir=terraform/multipass apply
 ```
 
+AWS EC2 instances:
+```shell
+terraform -chdir=terraform/aws init
+terraform -chdir=terraform/aws apply
+```
+
+
 If above script failed, simply re-run it
 
 
 Finally, run
 ```shell
-python main.py deploy
+python main.py deploy --cloudprovider="multipass"
+# for aws vms
+# python main.py deploy --cloudprovider="aws"
 ```
 
 After the deployment, You're good to go!
