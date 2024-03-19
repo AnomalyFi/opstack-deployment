@@ -218,8 +218,7 @@ def download_seq(download_url: str, version: str):
     if sub.returncode != 0:
         raise Exception(f"cannot untar nodekit files, reason: {sub.stderr}")
 
-
-def wait_seq(rpcURL: str, retry=180) -> bool:
+def wait_seq(rpcURL: str, retry=10) -> bool:
     cnt = 0
     while True:
         print(f'cheaking if seq is launched ({cnt}/{retry})')
@@ -233,16 +232,29 @@ def wait_seq(rpcURL: str, retry=180) -> bool:
         if cnt >= retry:
             return False
     
-# TODO: fetch some blocks here
 def seq_healthy(rpcURL: str) -> bool:
     url = pjoin(rpcURL, 'coreapi')
     resp = requests.post(url=url,
-        json={"id":1, "jsonrpc":"2.0", "method": "hypersdk.network", "params":[]}) 
-    
+        json={"id":1, "jsonrpc":"2.0", "method": "hypersdk.lastAccepted", "params":[]}) 
+
     if resp.status_code != 200:
         return False
+    
+    # fetch two blocks to check if running expectedly
+    try:
+        hStart = resp.json()['result']['height']
+        time.sleep(5)
+        resp = requests.post(url=url,
+            json={"id":1, "jsonrpc":"2.0", "method": "hypersdk.lastAccepted", "params":[]}) 
+        h = resp.json()['result']['height']
 
-    return True
+        if h > hStart:
+            return True
+        else:
+            return False
+    except Exception as e:
+        print(f'erorr {e} happened when checking seq healthy')
+        return False
 
     
 def getChainIDFromCreationLog(log: str) -> str:

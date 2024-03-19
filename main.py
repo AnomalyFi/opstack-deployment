@@ -3,6 +3,8 @@ import time
 import typer
 from typing_extensions import Annotated
 import utils
+import websockets.sync.client as wsclient
+import logging
 
 app = typer.Typer()
 state = {
@@ -43,8 +45,8 @@ def deploy():
     validatorIPs = utils.getValidatorIPs(state['terraformWorkingDir'])
     seqRPCURL = f"http://{validatorIPs[0]}:9650/ext/bc/{chainID}"
 
-    # default timeout is 3mins
-    seqIsUp = False
+    # default timeout is 10(times) x 5s
+    seqIsUp = utils.wait_seq(seqRPCURL)
     cnt = 0
     retry = 3
     # must restart avalanchego at least once
