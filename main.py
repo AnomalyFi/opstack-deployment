@@ -75,7 +75,49 @@ def launch_l2(chain_id: str):
     utils.deployNodekitL1(state['opDir'], ethL1RPC, seqRPCURL)
     utils.deployOPL2(state['opDir'], ethL1RPC, ethL1WS, seqRPCURL)
 
+@app.command()
+def deploy_seq():
+    print('reset avalanche node config')
+    utils.setDefaultAvaNodesConfig(state['ansibleDir'], state['inventoryDir'])
+
+    print('deploying eth l1')
+    utils.deployEthL1(state['ansibleDir'], state['inventoryDir'])
+    ethL1IP = utils.getEthL1IP(state['terraformWorkingDir'])
+    print('bootstraping avalanchego validators')
+    utils.bootstrapValidators(state['ansibleDir'], state['inventoryDir'])
+    # wait bootstraping to be stable
+    print('boostraping finished, waiting 30s to let it become stable to bootstrap a subnet')
+    time.sleep(30)
+    print('creating nodekit-seq subnet, here we are not directing stdout and stderr since we need to capture output')
+    log = utils.createAvalancheSubnet(state['ansibleDir'], state["inventoryDir"])
+    chainID = utils.getChainIDFromCreationLog(log)
+    subnetID = utils.getSubnetIDfromCreationLog(log)
+    print(f'updating avalanche nodes config chainID: {chainID}, subnetID: {subnetID}, ETH L1 IP: {ethL1IP}')
+    utils.updateTrackedSubnetNChainConfig(state['ansibleDir'], state['inventoryDir'], subnetID, chainID, ethL1IP)
+    print('provision avalanche nodes to start nodekit-seq subnet')
+    utils.provisionAvaNodes(state['ansibleDir'], state['inventoryDir'])
+
+    validatorIPs = utils.getValidatorIPs(state['terraformWorkingDir'])
+    seqRPCURL = f"http://{validatorIPs[0]}:9650/ext/bc/{chainID}"
+
+    # default timeout is 10(times) x 5s
+    seqIsUp = utils.wait_seq(seqRPCURL)
+    cnt = 0
+    retry = 3
+    # must restart avalanchego at least once
+    while not seqIsUp:
+        utils.restartAvalancheGo(state['ansibleDir'], state['inventoryDir'])
+        seqIsUp = utils.wait_seq(seqRPCURL)
+        cnt += 1
+        if cnt >= retry:
+            print("cannot launch nodekit-seq")
+
+    print(f'Deployed L1 at IP: {ethL1IP}, with default ports 8545 and 8546')
+    print(f'Deployed Seq with IPs: {validatorIPs}')
     
+@app.command()
+def launch_celestia_light():
+    utils.deployCelestiaLightNode() 
 
 @app.command()
 def create_ava_subnet():
@@ -136,7 +178,7 @@ def main(
     seqVersion: str = typer.Option(
         prompt="nodekit-seq version",
         prompt_required=False,
-        default="0.9.5"
+        default="0.9.7"
     ),
 ):
     if cloudProvider == "multipass":

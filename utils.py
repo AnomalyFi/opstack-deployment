@@ -189,6 +189,34 @@ def deployOPL2(opDir: str, l1RPC: str, l1WS: str, seqRPC: str):
 
     if sub.returncode != 0:
         raise Exception(f"unable to deploy contracts on ETH L1, reason: {sub.stderr}")
+
+def deployCelestiaLightNode(nodeStore: str = './.node-store', nodeVersion: str = 'v0.12.4', port: int = 26658, network: str = 'arabica', rpcUrl: str = 'validator-1.celestia-arabica-11.com'):
+    # docker run -v $NODE_STORE:/home/celestia -p 26658:26658 -e NODE_TYPE=$NODE_TYPE -e P2P_NETWORK=$NETWORK \
+    #     ghcr.io/celestiaorg/celestia-node:v0.12.4 \
+    #     celestia $NODE_TYPE start --core.ip $RPC_URL --p2p.network $NETWORK --rpc.addr 0.0.0.0
+    # cmd = ['sudo', 'mkdir', nodeStore]
+
+    # sub = run_command(cmd, capture_output=True)
+    # if sub.returncode != 0:
+    #     print(f'unable to mkdir {nodeStore}, reason: {sub.stderr}')
+    #     return
+
+    # cmd = ['sudo', 'chmod', '777', nodeStore]
+    # sub = run_command(cmd, capture_output=True)
+    # if sub.returncode != 0:
+    #     print(f'unable to give permission to {nodeStore}, reason: {sub.stderr}')
+    #     return
+
+    cmd = ['docker', 'run', '-v', f'{nodeStore}:/home/celestia', 
+           '-p', f'{port}:26658', '-e', 'NODE_TYPE=light', 
+           f'ghcr.io/celestiaorg/celestia-node:{nodeVersion}',
+           'celestia', 'light', 'start', '--core.ip', rpcUrl, '--p2p.network', network, '--rpc.addr', '0.0.0.0']
+
+    sub = run_command(cmd, capture_output=False, stderr=sys.stderr, stdout=sys.stdout)
+
+    if sub.returncode != 0:
+        print(f'unable to start node, reason: {sub.stderr}')
+        return
     
 
 def download_seq(download_url: str, version: str):

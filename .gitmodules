@@ -4,3 +4,6 @@
 [submodule "ansible-avalanche-getting-started"]
 	path = ansible-avalanche-getting-started
 	url = https://github.com/AnomalyFi/ansible-avalanche-getting-started
+[submodule "nodekit-relay"]
+	path = nodekit-relay
+	url = https://github.com/AnomalyFi/nodekit-relay
