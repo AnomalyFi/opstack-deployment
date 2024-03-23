@@ -143,6 +143,18 @@ def get_validator_ips():
     print(f"ips :{ips}")
 
 @app.command()
+def seq_info():
+    rpcEndpoint = 'http://{ip}:9650/ext/bc/{id}'
+
+    chainID, ips = utils.getChainInfo(state['ansibleDir'], state['inventoryDir'], state['terraformWorkingDir'])
+
+    print(f'ChainID: {chainID}')
+    print('api endpoints:')
+    for ip in ips:
+        print(rpcEndpoint.format(ip=ip, id=chainID))
+
+
+@app.command()
 def init():
     utils.download_seq(state['seqDownloadAddr'], state['seqVersion'])
 

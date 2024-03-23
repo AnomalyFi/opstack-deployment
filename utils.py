@@ -66,6 +66,7 @@ def setDefaultAvaNodesConfig(ansibleDir: str, inventoryDir: str):
         yaml.safe_dump(nodeConf, f)
     
 
+# TODO: make config to a class then pass it
 def updateTrackedSubnetNChainConfig(ansibleDir: str, inventoryDir: str, subnetID: str, chainID: str, ethl1IP: str):
     avaNodeConfLoc = pjoin(ansibleDir, inventoryDir, 'group_vars/avalanche_nodes.yml')
     with open(avaNodeConfLoc, 'r+') as f:
@@ -84,7 +85,8 @@ def updateTrackedSubnetNChainConfig(ansibleDir: str, inventoryDir: str, subnetID
         nodeConf['avalanchego_chains_configs'] = {}
         nodeConf['avalanchego_chains_configs'][chainID] = {
             'ethRPCAddr': f'http://{ethl1IP}:8545',
-            'ethWSAddr': f'ws://{ethl1IP}:8546'
+            'ethWSAddr': f'ws://{ethl1IP}:8546',
+            'mempoolSize': 256
         }
 
         # clean existing content
@@ -344,6 +346,16 @@ def getValidatorIPs(terraformWorkingDir: str) -> typing.List[str]:
     validatorIPs = terraOut['validators_ips']['value']
 
     return validatorIPs
+
+def getChainInfo(ansibleDir: str, inventoryDir: str, terraformWorkingDir: str):
+    confPath = pjoin(ansibleDir, inventoryDir, 'group_vars/avalanche_nodes.yml')
+    ips = getValidatorIPs(terraformWorkingDir)
+    with open(confPath, 'r') as f:
+        conf = yaml.safe_load(f)
+        chainID = list(conf['avalanchego_chains_configs'].keys())[0]
+    
+    return chainID, ips
+        
 
 def run_command(args, check=True, shell=False, cwd=None, env=None, timeout=None, capture_output=False, stdout=None , stderr=None):
     env = env if env else {}
