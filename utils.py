@@ -122,12 +122,12 @@ def restartAvalancheGo(ansibleDir: str, inventoryDir: str):
     except Exception as e:
         pass
 
-def deployContractsOnL1(opDir: str, l1RPC: str):
-    cmd = ['python', 'bedrock-devnet/main.py', '--monorepo-dir=.', '--deploy-contracts', f'--l1-rpc-url={l1RPC}']
+def deployContractsOnL1(opDir: str, l1RPC: str, l2ChainID: str='45200'):
+    cmd = ['python', 'bedrock-devnet/main.py', '--monorepo-dir=.', '--deploy-contracts', f'--l1-rpc-url={l1RPC}', '--l2-chain-id', l2ChainID]
     cmdStr = ' '.join(cmd)
     print(cmdStr)
     sub = run_command(
-        # TODO: to be removed
+        # TODO: to be removed since foundryrs by nix-foundryrs version is not correct and leads cast send to fail
         # ['nix-shell', '--run', cmdStr],
         cmd,
         capture_output=False,
@@ -139,30 +139,41 @@ def deployContractsOnL1(opDir: str, l1RPC: str):
     if sub.returncode != 0:
         raise Exception(f"unable to deploy contracts on ETH L1, reason: {sub.stderr}")
 
-# python bedrock-devnet/main.py 
-# --monorepo-dir=. 
-# --launch-nodekit-l1 
-# --l1-rpc-url="http://10.153.238.182:8545" 
-# --seq-url="http://10.153.238.150:9650/ext/bc/24ummBEhg4mA8DV1ojNjpHpQVipSiVZUB1zhcmgLF7woWFmgDz"
-def deployNodekitL1(opDir: str, l1RPC: str, seqRPC: str):
-    cmd = ['python', 
-           'bedrock-devnet/main.py', 
-           '--monorepo-dir=.', 
-           '--launch-nodekit-l1',
-           f'--l1-rpc-url={l1RPC}',
-           f"--seq-url={seqRPC}"]
-    cmdStr = ' '.join(cmd)
-    print(cmdStr)
-    sub = run_command(
-        ['nix-shell', '--run', cmdStr],
-        capture_output=False,
-        stderr=sys.stderr,
-        stdout=sys.stdout,
-        cwd=opDir
-    )
+def deployNodekitL1(nodekit_l1_dir: str, 
+                    seq_url: str,
+                    l1_rpc: str,
+                    commitment_contract_addr: str,
+                    commitment_contract_wallet: str = 'ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
+                    l1_chain_id: str = '32382'):
+    seq_chain_id: str = seq_url.split('/')[-1]
+
+    env = {
+        'SEQ_ADDR': seq_url,
+        'CHAIN_ID': seq_chain_id,
+        'CONTRACT_ADDR': commitment_contract_addr,
+        # lstrip or `Failed to convert from hex to ECDSA: invalid hex character 'x' in private key`
+        'CONTRACT_WALLET': commitment_contract_wallet.lstrip('0x'),
+        'CHAIN_ID_L1': l1_chain_id,
+        'L1_RPC': l1_rpc
+    }
+
+    print(f'using config to deploy nodekit l1: {env}')
+
+    sub = run_command(['docker', 'compose', 'up', '-d'], cwd=nodekit_l1_dir, env=env, capture_output=False, stdout=sys.stdout, stderr=sys.stderr)
 
     if sub.returncode != 0:
-        raise Exception(f"unable to deploy contracts on ETH L1, reason: {sub.stderr}")
+        raise Exception(f'error deploying nodekit l1: {sub.stderr}')
+
+def deployNodekitZKContracts(nodekitZKDir: str, l1PRC: str, mnenoic: str):
+    sub = run_command([
+            'forge', 'script', 'DeploySequencer', '--broadcast',
+            '--rpc-url', l1PRC, '--legacy'
+        ], env={
+            'MNEMONIC': mnenoic
+        }, cwd=nodekitZKDir, capture_output=False, stderr=sys.stderr, stdout=sys.stdout) 
+    
+    if sub.returncode != 0:
+        raise Exception(f"error deploying nodekit zk contracts: {sub.stderr}")
     
 # python 
 # bedrock-devnet/main.py 
@@ -193,6 +204,10 @@ def deployOPL2(opDir: str, l1RPC: str, l1WS: str, seqRPC: str):
 
     if sub.returncode != 0:
         raise Exception(f"unable to deploy contracts on ETH L1, reason: {sub.stderr}")
+
+def clean_op_deployment_temp_files(opDir: str):
+    tempfile_dir = pjoin(opDir, '.devnet')
+    os.system(f'rm {tempfile_dir}/*') 
 
 def deployCelestiaLightNode(nodeStore: str = './.node-store', nodeVersion: str = 'v0.12.4', port: int = 26658, network: str = 'arabica', rpcUrl: str = 'validator-1.celestia-arabica-11.com'):
     # docker run -v $NODE_STORE:/home/celestia -p 26658:26658 -e NODE_TYPE=$NODE_TYPE -e P2P_NETWORK=$NETWORK \
@@ -358,6 +373,16 @@ def getChainInfo(ansibleDir: str, inventoryDir: str, terraformWorkingDir: str):
     
     return chainID, ips
         
+def getNodekitZKContractAddr(zkDir: str, l1ChainID: str = '32382') -> str:
+    zk_dir = zkDir
+    l1_chain_id = l1ChainID
+    latest_run_path = os.path.join(zk_dir, f'broadcast/Sequencer.s.sol/{l1_chain_id}/run-latest.json')
+
+    with open(latest_run_path, 'r') as f:
+        runinfo_str = f.read()
+        runinfo = json.loads(runinfo_str)
+
+        return runinfo['transactions'][0]['contractAddress']
 
 def run_command(args, check=True, shell=False, cwd=None, env=None, timeout=None, capture_output=False, stdout=None , stderr=None):
     env = env if env else {}

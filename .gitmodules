@@ -7,3 +7,9 @@
 [submodule "nodekit-relay"]
 	path = nodekit-relay
 	url = https://github.com/AnomalyFi/nodekit-relay
+[submodule "nodekit-zk"]
+	path = nodekit-zk
+	url = https://github.com/AnomalyFi/nodekit-zk
+[submodule "nodekit-l1"]
+	path = nodekit-l1
+	url = https://github.com/AnomalyFi/nodekit-l1
