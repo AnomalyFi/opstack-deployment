@@ -1,11 +1,15 @@
 certifi==2024.2.2
+cffi==1.16.0
 charset-normalizer==3.3.2
 click==8.1.7
 colorama==0.4.6
+cryptography==42.0.7
 idna==3.6
 markdown-it-py==3.0.0
 mdurl==0.1.2
+pycparser==2.22
 Pygments==2.17.2
+PyJWT==2.8.0
 PyYAML==6.0.1
 requests==2.31.0
 rich==13.7.1
@@ -13,3 +17,4 @@ shellingham==1.5.4
 typer==0.9.0
 typing_extensions==4.10.0
 urllib3==2.2.1
+websockets==12.0

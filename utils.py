@@ -127,7 +127,9 @@ def deployContractsOnL1(opDir: str, l1RPC: str):
     cmdStr = ' '.join(cmd)
     print(cmdStr)
     sub = run_command(
-        ['nix-shell', '--run', cmdStr],
+        # TODO: to be removed
+        # ['nix-shell', '--run', cmdStr],
+        cmd,
         capture_output=False,
         stderr=sys.stderr,
         stdout=sys.stdout,

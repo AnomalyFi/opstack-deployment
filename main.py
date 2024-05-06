@@ -116,6 +116,32 @@ def deploy_seq():
     print(f'Deployed Seq with IPs: {validatorIPs}')
     
 @app.command()
+def deploy_contracts():
+    ethL1IP = utils.getEthL1IP(state['terraformWorkingDir'])
+    ethL1RPC = f'http://{ethL1IP}:8545'
+    utils.deployContractsOnL1(state['opDir'], ethL1RPC)
+
+@app.command()
+def deploy_nodekit_l1():
+    chainID,validatorIPs = utils.getChainInfo(state['ansibleDir'], state['inventoryDir'], state['terraformWorkingDir'])
+    seqRPCURL = f"http://{validatorIPs[0]}:9650/ext/bc/{chainID}"
+
+    ethL1IP = utils.getEthL1IP(state['terraformWorkingDir'])
+    ethL1RPC = f'http://{ethL1IP}:8545'
+    utils.deployNodekitL1(state['opDir'], ethL1RPC, seqRPCURL)
+
+@app.command()
+def deploy_op_l2():
+    chainID,validatorIPs = utils.getChainInfo(state['ansibleDir'], state['inventoryDir'], state['terraformWorkingDir'])
+    seqRPCURL = f"http://{validatorIPs[0]}:9650/ext/bc/{chainID}"
+
+    ethL1IP = utils.getEthL1IP(state['terraformWorkingDir'])
+    ethL1RPC = f'http://{ethL1IP}:8545'
+    ethL1WS = f'ws://{ethL1IP}:8546'
+
+    utils.deployOPL2(state['opDir'], ethL1RPC, ethL1WS, seqRPCURL)
+
+@app.command()
 def launch_celestia_light():
     utils.deployCelestiaLightNode() 
 
