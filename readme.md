@@ -104,7 +104,7 @@ The default rollup chain id is `45200`, and the ports mapping are
 + `OP1_BATCHER_RPC_PORT`: 17545
 + `OP1_PROPOSER_RPC_PORT`: 16545
 
-After the OP chain deployment, you should see related contract addresses, chain genesis, port mapping info under folder `.l2chain`
+After the OP chain deployment, you should see related contract addresses, chain genesis, port mapping info under folder `.l2chains`
 
 
 # Manually deployment
