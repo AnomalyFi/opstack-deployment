@@ -173,7 +173,8 @@ def deploy_op_l2(l2_chain_id='45200'):
     utils.deployOPL2(state['opDir'], ethL1RPC, ethL1WS, seqRPCURL, l2ChainID=l2_chain_id)
 
 @app.command()
-def deploy_op_chain(l2_chain_id='45200'):
+def deploy_op_chain(inc: int = 0):
+    l2_chain_id = str(45200 + inc)
     print(f'deploying op chain with chainID: {l2_chain_id}')
     # deploy op contracts
     ethL1IP = getETHIP()
@@ -184,9 +185,8 @@ def deploy_op_chain(l2_chain_id='45200'):
     print('deploying op contracts')
     commitmentAddr = utils.getNodekitZKContractAddr(state['nodekitZKDir'])
     utils.deployContractsOnL1(state['opDir'], ethL1RPC, commitmentAddr, l2ChainID=l2_chain_id)
-    time.sleep(5)
     print('deploying op l2')
-    utils.deployOPL2(state['opDir'], ethL1RPC, ethL1WS, seqRPCURL, l2ChainID=l2_chain_id)
+    utils.deployOPL2(state['opDir'], ethL1RPC, ethL1WS, seqRPCURL, l2ChainID=l2_chain_id, portIncrement=inc)
 
     utils.saveOpDevnetInfo(state['opDir'], state['l2storage'], l2_chain_id)
 

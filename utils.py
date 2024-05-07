@@ -183,7 +183,7 @@ def deployNodekitZKContracts(nodekitZKDir: str, l1PRC: str, mnenoic: str):
 # --l1-rpc-url="http://10.153.238.182:8545" 
 # --l1-ws-url="ws://10.153.238.182:8546"
 # --seq-url="http://10.153.238.150:9650/ext/bc/24ummBEhg4mA8DV1ojNjpHpQVipSiVZUB1zhcmgLF7woWFmgDz"
-def deployOPL2(opDir: str, l1RPC: str, l1WS: str, seqRPC: str, l2ChainID='45200'):
+def deployOPL2(opDir: str, l1RPC: str, l1WS: str, seqRPC: str, l2ChainID='45200', portIncrement=0):
     cmd = ['python', 
            'bedrock-devnet/main.py', 
            '--monorepo-dir=.', 
@@ -195,7 +195,7 @@ def deployOPL2(opDir: str, l1RPC: str, l1WS: str, seqRPC: str, l2ChainID='45200'
     
     cmdStr = ' '.join(cmd)
     print(cmdStr)
-
+    configureOPL2Port(opDir, portIncrement)
     sub = run_command(
         ['nix-shell', '--run', cmdStr],
         capture_output=False,
@@ -385,6 +385,25 @@ def getNodekitZKContractAddr(zkDir: str, l1ChainID: str = '32382') -> str:
 
         return runinfo['transactions'][0]['contractAddress']
 
+def configureOPL2Port(opDir: str, portIncrement=0):
+    envPath = pjoin(opDir, 'ops-bedrock/.env')
+
+    defaultPortMapping = {
+        'OP1_L2_RPC_PORT': 19545,
+        'OP1_NODE_RPC_PORT': 18545,
+        'OP1_BATCHER_RPC_PORT': 17545,
+        'OP1_PROPOSER_RPC_PORT': 16545,
+    }
+
+    for key in defaultPortMapping:
+        defaultPortMapping[key] += portIncrement
+    
+    print(f'writing .env for op chain: {defaultPortMapping}')
+    with open(envPath, 'w') as f:
+        for key in defaultPortMapping:
+            f.write(f'{key}={defaultPortMapping[key]}\n')
+
+
 def ensureDir(dir: str):
     if not os.path.exists(dir):
         os.mkdir(dir)
@@ -395,10 +414,12 @@ def ensureDir(dir: str):
 
 def saveOpDevnetInfo(opDir: str, storageDir: str, chainID: str):
     ensureDir(storageDir)
+    envPath = pjoin(opDir, 'ops-bedrock/.env')
     infoDir = pjoin(opDir, '.devnet')
     targetDir = pjoin(storageDir, chainID)
     print(f'copying chain info from {infoDir} to {targetDir}')
     shutil.move(infoDir, targetDir)
+    shutil.move(envPath, pjoin(targetDir, '.env'))
 
 def run_command(args, check=True, shell=False, cwd=None, env=None, timeout=None, capture_output=False, stdout=None , stderr=None):
     env = env if env else {}
