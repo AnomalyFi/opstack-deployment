@@ -2,26 +2,26 @@
 
 In this tutorial, we will cover how to launch op-stack along with nodekit stack, generally we have following steps:
 
-1. Deploy ethereum layer 1(eth-l1) locally
-2. Deploy Nodekit-Seq
-3. Deploy contracts for op-stack l2 and nodekit-l1
-4. Deploy Nodekit-L1
-5. Launch op-l2
+1. Deploy Nodekit Stack
+1. Deploy OP Chain
 
 ## Prerequisites
 
+- OS: Ubuntu 22.04 or 24.04
 - Python >=3.9 with `venv` module installed
 - For the local test network:
   - 7+GiB of free RAM
-  - [Multipass](https://multipass.run) installed (see [Install Multipass](https://multipass.run/install))
   - [Terraform](https://terraform.io) installed (see [Install Terraform](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli))
 - For filtering outputs:
   - [jq](https://stedolan.github.io/jq/) (see [Download jq](https://stedolan.github.io/jq/download/))
 - Nix:
   - https://nixos.org/
+- nvm: https://github.com/nvm-sh/nvm/blob/master/README.md#installing-and-updating
+- Docker: https://docs.docker.com/engine/install/ubuntu/
 
+## Install dependencies & build docker images
 
-Please run in the root folder(this repository)
+Please run in the **root** folder(this repository)
 
 ```shell
 python3 -m venv .venv
@@ -42,31 +42,69 @@ Manually creating all the virtual machines are needed, there are two potions:
 
 go to repository `ansible-avalanche-getting-started`, 
 
-Multipass VMs:
-
-```shell
-terraform -chdir=terraform/multipass init
-terraform -chdir=terraform/multipass apply
-```
-
-AWS EC2 instances:
 ```shell
 terraform -chdir=terraform/aws init
 terraform -chdir=terraform/aws apply
 ```
 
+In folder `op-integration`, 
 
-If above script failed, simply re-run it
-
-
-Finally, run
 ```shell
-python main.py deploy --cloudprovider="multipass"
-# for aws vms
-# python main.py deploy --cloudprovider="aws"
+nvm use
+# install dependencies
+pnpm i
+# install foundryrs
+pnpm install:foundry
+# build containers
+cd ops-bedrock
+export COMPOSE_DOCKER_CLI_BUILD=1
+export DOCKER_BUILDKIT=1
+docker compose build
 ```
 
-After the deployment, You're good to go!
+## Deployment
+
+The working directory that you should be on during the deployment is in the root folder, simply type
+
+```shell
+source .venv/bin/activate
+```
+
+to activate python environment
+
+### Deploy Nodekit Seq Stack
+
+```shell
+# deploy seq
+python main.py --cloudprovider="aws" deploy-seq
+```
+
+```shell
+# deploy commitment contract 
+python main.py --cloudprovider="aws" deploy-zk-contracts
+```
+
+```shell
+# deploy nodekit-l1
+python main.py --cloudprovider="aws" deploy-nodekit-l1
+```
+
+### Deploy OP Chain
+
+```shell
+python main.py --cloudprovider="aws" deploy-op-chain --inc 0
+```
+
+where the number passed flag `--inc` will be added to the chain id and the mapping ports of the Optimism rollup. 
+
+The default rollup chain id is `45200`, and the ports mapping are 
+
++ `OP1_L2_RPC_PORT`: 19545
++ `OP1_NODE_RPC_PORT`: 18545
++ `OP1_BATCHER_RPC_PORT`: 17545
++ `OP1_PROPOSER_RPC_PORT`: 16545
+
+After the OP chain deployment, you should see related contract addresses, chain genesis, port mapping info under folder `.l2chain`
 
 
 # Manually deployment
