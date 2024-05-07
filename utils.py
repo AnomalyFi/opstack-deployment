@@ -7,6 +7,7 @@ import typing
 import subprocess
 import requests
 import yaml
+import shutil
 
 pjoin = os.path.join
 
@@ -122,8 +123,8 @@ def restartAvalancheGo(ansibleDir: str, inventoryDir: str):
     except Exception as e:
         pass
 
-def deployContractsOnL1(opDir: str, l1RPC: str, l2ChainID: str='45200'):
-    cmd = ['python', 'bedrock-devnet/main.py', '--monorepo-dir=.', '--deploy-contracts', f'--l1-rpc-url={l1RPC}', '--l2-chain-id', l2ChainID]
+def deployContractsOnL1(opDir: str, l1RPC: str, nodekitContractAddr: str, l2ChainID: str='45200'):
+    cmd = ['python', 'bedrock-devnet/main.py', '--monorepo-dir=.', '--deploy-contracts', f'--l1-rpc-url={l1RPC}', f'--l2-chain-id={l2ChainID}', f'--nodekit-contract={nodekitContractAddr}']
     cmdStr = ' '.join(cmd)
     print(cmdStr)
     sub = run_command(
@@ -182,14 +183,15 @@ def deployNodekitZKContracts(nodekitZKDir: str, l1PRC: str, mnenoic: str):
 # --l1-rpc-url="http://10.153.238.182:8545" 
 # --l1-ws-url="ws://10.153.238.182:8546"
 # --seq-url="http://10.153.238.150:9650/ext/bc/24ummBEhg4mA8DV1ojNjpHpQVipSiVZUB1zhcmgLF7woWFmgDz"
-def deployOPL2(opDir: str, l1RPC: str, l1WS: str, seqRPC: str):
+def deployOPL2(opDir: str, l1RPC: str, l1WS: str, seqRPC: str, l2ChainID='45200'):
     cmd = ['python', 
            'bedrock-devnet/main.py', 
            '--monorepo-dir=.', 
            '--launch-l2',
            f'--l1-rpc-url={l1RPC}',
            f"--l1-ws-url={l1WS}",
-           f"--seq-url={seqRPC}"]
+           f"--seq-url={seqRPC}",
+           f"--l2-chain-id={l2ChainID}"]
     
     cmdStr = ' '.join(cmd)
     print(cmdStr)
@@ -199,7 +201,7 @@ def deployOPL2(opDir: str, l1RPC: str, l1WS: str, seqRPC: str):
         capture_output=False,
         stderr=sys.stderr,
         stdout=sys.stdout,
-        cwd=opDir
+        cwd=opDir,
     )
 
     if sub.returncode != 0:
@@ -236,7 +238,6 @@ def deployCelestiaLightNode(nodeStore: str = './.node-store', nodeVersion: str =
     if sub.returncode != 0:
         print(f'unable to start node, reason: {sub.stderr}')
         return
-    
 
 def download_seq(download_url: str, version: str):
     file = f"tokenvm_{version}_linux_amd64.tar.gz"
@@ -383,6 +384,21 @@ def getNodekitZKContractAddr(zkDir: str, l1ChainID: str = '32382') -> str:
         runinfo = json.loads(runinfo_str)
 
         return runinfo['transactions'][0]['contractAddress']
+
+def ensureDir(dir: str):
+    if not os.path.exists(dir):
+        os.mkdir(dir)
+        return
+
+    if os.path.exists(dir) and not os.path.isdir(dir):
+        raise Exception(f'path {dir} exists but is not a directory')
+
+def saveOpDevnetInfo(opDir: str, storageDir: str, chainID: str):
+    ensureDir(storageDir)
+    infoDir = pjoin(opDir, '.devnet')
+    targetDir = pjoin(storageDir, chainID)
+    print(f'copying chain info from {infoDir} to {targetDir}')
+    shutil.move(infoDir, targetDir)
 
 def run_command(args, check=True, shell=False, cwd=None, env=None, timeout=None, capture_output=False, stdout=None , stderr=None):
     env = env if env else {}

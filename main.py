@@ -18,6 +18,7 @@ state = {
     "nodekitL1Dir": "nodekit-l1",
     "nodekitZKDir": "nodekit-zk",
     "mnenoic": "test test test test test test test test test test test junk",
+    "l2storage": ".l2chains",
 
     # if manual is enabled, seq and eth ip will be overrided accordingly
     "manual": False,
@@ -143,7 +144,8 @@ def deploy_zk_contracts():
 def deploy_op_contracts(l2_chain_id='45200'):
     ethL1IP = getETHIP()
     ethL1RPC = f'http://{ethL1IP}:8545'
-    utils.deployContractsOnL1(state['opDir'], ethL1RPC, l2ChainID=l2_chain_id)
+    commitmentAddr = utils.getNodekitZKContractAddr(state['nodekitZKDir'])
+    utils.deployContractsOnL1(state['opDir'], ethL1RPC, commitmentAddr, l2ChainID=l2_chain_id)
 
 @app.command()
 def deploy_nodekit_l1():
@@ -156,9 +158,7 @@ def deploy_nodekit_l1():
     utils.deployNodekitL1(state['nodekitL1Dir'], seqRPCUrl, ethL1RPC, commitmentAddr)
 
 @app.command()
-def deploy_op_l2():
-    utils.clean_op_deployment_temp_files(state['opDir'])
-
+def deploy_op_l2(l2_chain_id='45200'):
     if state['manual']:
         seqRPCURL = state['seqRPC']
     else:
@@ -170,7 +170,25 @@ def deploy_op_l2():
     ethL1RPC = f'http://{ethL1IP}:8545'
     ethL1WS = f'ws://{ethL1IP}:8546'
 
-    utils.deployOPL2(state['opDir'], ethL1RPC, ethL1WS, seqRPCURL)
+    utils.deployOPL2(state['opDir'], ethL1RPC, ethL1WS, seqRPCURL, l2ChainID=l2_chain_id)
+
+@app.command()
+def deploy_op_chain(l2_chain_id='45200'):
+    print(f'deploying op chain with chainID: {l2_chain_id}')
+    # deploy op contracts
+    ethL1IP = getETHIP()
+    ethL1RPC = f'http://{ethL1IP}:8545'
+    ethL1WS = f'ws://{ethL1IP}:8546'
+    seqRPCURL = getSeqRPC()
+
+    print('deploying op contracts')
+    commitmentAddr = utils.getNodekitZKContractAddr(state['nodekitZKDir'])
+    utils.deployContractsOnL1(state['opDir'], ethL1RPC, commitmentAddr, l2ChainID=l2_chain_id)
+    time.sleep(5)
+    print('deploying op l2')
+    utils.deployOPL2(state['opDir'], ethL1RPC, ethL1WS, seqRPCURL, l2ChainID=l2_chain_id)
+
+    utils.saveOpDevnetInfo(state['opDir'], state['l2storage'], l2_chain_id)
 
 @app.command()
 def launch_celestia_light():
@@ -225,7 +243,7 @@ def seq_healthy(url: str):
 
 @app.callback()
 def main(
-    manual: str = typer.Option(
+    manual: bool = typer.Option(
         prompt="manually input seq info and eth info, usually needed when you deploy the other rollup on another machine", 
         prompt_required=False,
         default=False),
@@ -294,6 +312,17 @@ def getETHIP():
         l1IP = utils.getEthL1IP(state['terraformWorkingDir'])
 
     return l1IP
+
+@app.command()
+def getSeqRPC():
+    if state['manual']:
+        seqRPCURL = state['seqRPC']
+    else:
+        chainID, validatorIPs = utils.getChainInfo(state['ansibleDir'], state['inventoryDir'], state['terraformWorkingDir'])
+        seqRPCURL = f"http://{validatorIPs[0]}:9650/ext/bc/{chainID}"
+    
+    print(seqRPCURL)
+    return seqRPCURL
 
 if __name__ == "__main__":
     app()
