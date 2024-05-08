@@ -14,7 +14,16 @@ state = {
     "terraformWorkingDir": "ansible-avalanche-getting-started/terraform/multipass",
     "seqDownloadAddr": "https://github.com/AnomalyFi/nodekit-seq/releases/download",
     "seqVersion": "0.9.5",
-    "inventoryDir": "inventories/local"
+    "inventoryDir": "inventories/local",
+    "nodekitL1Dir": "nodekit-l1",
+    "nodekitZKDir": "nodekit-zk",
+    "mnenoic": "test test test test test test test test test test test junk",
+    "l2storage": ".l2chains",
+
+    # if manual is enabled, seq and eth ip will be overrided accordingly
+    "manual": False,
+    "ethL1IP": '',
+    "seqRPC": '',
 }
 
 
@@ -59,8 +68,16 @@ def deploy():
         
     ethL1RPC = f'http://{ethL1IP}:8545'
     ethL1WS = f'ws://{ethL1IP}:8546'
+    # deploy zk contracts
+    utils.deployNodekitZKContracts(state['nodekitZKDir'], ethL1RPC, mnenoic='test test test test test test test test test test test junk')
+    commitmentContractAddr = utils.getNodekitZKContractAddr(state['nodekitZKDir'])
+    print(f'zk contract deployed addr: {commitmentContractAddr}')
+    utils.deployNodekitL1(state['nodekitL1Dir'], seqRPCURL, ethL1RPC, commitmentContractAddr)
+    print('nodekit l1 deployed')
+
+    print('deploying op contracts')
     utils.deployContractsOnL1(state['opDir'], ethL1RPC)
-    utils.deployNodekitL1(state['opDir'], ethL1RPC, seqRPCURL)
+    print('launching op stack')
     utils.deployOPL2(state['opDir'], ethL1RPC, ethL1WS, seqRPCURL)
 
 @app.command()
@@ -116,30 +133,62 @@ def deploy_seq():
     print(f'Deployed Seq with IPs: {validatorIPs}')
     
 @app.command()
-def deploy_contracts():
-    ethL1IP = utils.getEthL1IP(state['terraformWorkingDir'])
+def deploy_zk_contracts():
+    l1IP = utils.getEthL1IP(state['terraformWorkingDir'])
+    ethL1RPC = f'http://{l1IP}:8545'
+    utils.deployNodekitZKContracts(state['nodekitZKDir'], ethL1RPC, mnenoic='test test test test test test test test test test test junk')
+    addr = utils.getNodekitZKContractAddr(state['nodekitZKDir'])
+    print(f'zk deployed addr: {addr}')
+
+@app.command()
+def deploy_op_contracts(l2_chain_id='45200'):
+    ethL1IP = getETHIP()
     ethL1RPC = f'http://{ethL1IP}:8545'
-    utils.deployContractsOnL1(state['opDir'], ethL1RPC)
+    commitmentAddr = utils.getNodekitZKContractAddr(state['nodekitZKDir'])
+    utils.deployContractsOnL1(state['opDir'], ethL1RPC, commitmentAddr, l2ChainID=l2_chain_id)
 
 @app.command()
 def deploy_nodekit_l1():
-    chainID,validatorIPs = utils.getChainInfo(state['ansibleDir'], state['inventoryDir'], state['terraformWorkingDir'])
-    seqRPCURL = f"http://{validatorIPs[0]}:9650/ext/bc/{chainID}"
-
+    chainID, ips = utils.getChainInfo(state['ansibleDir'], state['inventoryDir'], state['terraformWorkingDir'])
+    seqRPCUrl = f'http://{ips[0]}:9650/ext/bc/{chainID}'
+    commitmentAddr = utils.getNodekitZKContractAddr(state['nodekitZKDir'])
     ethL1IP = utils.getEthL1IP(state['terraformWorkingDir'])
     ethL1RPC = f'http://{ethL1IP}:8545'
-    utils.deployNodekitL1(state['opDir'], ethL1RPC, seqRPCURL)
+
+    utils.deployNodekitL1(state['nodekitL1Dir'], seqRPCUrl, ethL1RPC, commitmentAddr)
 
 @app.command()
-def deploy_op_l2():
-    chainID,validatorIPs = utils.getChainInfo(state['ansibleDir'], state['inventoryDir'], state['terraformWorkingDir'])
-    seqRPCURL = f"http://{validatorIPs[0]}:9650/ext/bc/{chainID}"
+def deploy_op_l2(l2_chain_id='45200'):
+    if state['manual']:
+        seqRPCURL = state['seqRPC']
+    else:
+        chainID, validatorIPs = utils.getChainInfo(state['ansibleDir'], state['inventoryDir'], state['terraformWorkingDir'])
+        seqRPCURL = f"http://{validatorIPs[0]}:9650/ext/bc/{chainID}"
 
-    ethL1IP = utils.getEthL1IP(state['terraformWorkingDir'])
+
+    ethL1IP = getETHIP()
     ethL1RPC = f'http://{ethL1IP}:8545'
     ethL1WS = f'ws://{ethL1IP}:8546'
 
-    utils.deployOPL2(state['opDir'], ethL1RPC, ethL1WS, seqRPCURL)
+    utils.deployOPL2(state['opDir'], ethL1RPC, ethL1WS, seqRPCURL, l2ChainID=l2_chain_id)
+
+@app.command()
+def deploy_op_chain(inc: int = 0):
+    l2_chain_id = str(45200 + inc)
+    print(f'deploying op chain with chainID: {l2_chain_id}')
+    # deploy op contracts
+    ethL1IP = getETHIP()
+    ethL1RPC = f'http://{ethL1IP}:8545'
+    ethL1WS = f'ws://{ethL1IP}:8546'
+    seqRPCURL = getSeqRPC()
+
+    print('deploying op contracts')
+    commitmentAddr = utils.getNodekitZKContractAddr(state['nodekitZKDir'])
+    utils.deployContractsOnL1(state['opDir'], ethL1RPC, commitmentAddr, l2ChainID=l2_chain_id)
+    print('deploying op l2')
+    utils.deployOPL2(state['opDir'], ethL1RPC, ethL1WS, seqRPCURL, l2ChainID=l2_chain_id, portIncrement=inc)
+
+    utils.saveOpDevnetInfo(state['opDir'], state['l2storage'], l2_chain_id)
 
 @app.command()
 def launch_celestia_light():
@@ -194,6 +243,18 @@ def seq_healthy(url: str):
 
 @app.callback()
 def main(
+    manual: bool = typer.Option(
+        prompt="manually input seq info and eth info, usually needed when you deploy the other rollup on another machine", 
+        prompt_required=False,
+        default=False),
+    eth_ip: str = typer.Option(
+        prompt="eth l1 ip", 
+        prompt_required=False,
+        default='127.0.0.1'),
+    seq_rpc: str = typer.Option(
+        prompt="nodekit seq rpc", 
+        prompt_required=False,
+        default='http://52.206.11.137:9650/ext/bc/2ArqB8j5FWQY9ZBtA3QFJgiH9EmXzbqGup5kuyPQZVZcL913Au'),
     ansibleDir: str = typer.Option(
         prompt="the ansible-avalanche-getting-started repository dir", 
         prompt_required=False,
@@ -229,6 +290,11 @@ def main(
         print('using aws cloud provider')
     else:
         raise Exception("unsupported cloud provider")
+    
+    if manual:
+        print(f'using manual mode, setting eth ip to {eth_ip}, seq rpc url to {seq_rpc}')
+        state['ethL1IP'] = eth_ip
+        state['seqRPC'] = seq_rpc
 
     state["ansibleDir"] = ansibleDir
     state['cloudProvider'] = cloudProvider
@@ -236,6 +302,27 @@ def main(
     state['seqDownloadAddr'] = seqDownloadAddr
     state['seqVersion'] = seqVersion
     state['inventoryDir'] = inventoryDir
+    state['manual'] = manual
+
+
+def getETHIP():
+    if state['manual']:
+        l1IP = state['ethL1IP']
+    else:
+        l1IP = utils.getEthL1IP(state['terraformWorkingDir'])
+
+    return l1IP
+
+@app.command()
+def getSeqRPC():
+    if state['manual']:
+        seqRPCURL = state['seqRPC']
+    else:
+        chainID, validatorIPs = utils.getChainInfo(state['ansibleDir'], state['inventoryDir'], state['terraformWorkingDir'])
+        seqRPCURL = f"http://{validatorIPs[0]}:9650/ext/bc/{chainID}"
+    
+    print(seqRPCURL)
+    return seqRPCURL
 
 if __name__ == "__main__":
     app()
