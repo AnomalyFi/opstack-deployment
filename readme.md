@@ -25,8 +25,6 @@ In this tutorial, we will cover how to launch op-stack along with nodekit stack,
 
    ```shell
    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
-   nvm install v20
-   nvm use v20
    ```
 
    2. Foundry tools by foundryup
