@@ -42,7 +42,7 @@ In this tutorial, we will cover how to launch op-stack along with nodekit stack,
    # download binaries
    wget https://github.com/foundry-rs/foundry/releases/download/nightly-f625d0fa7c51e65b4bf1e8f7931cd1c6e2e285e9/foundry_nightly_linux_amd64.tar.gz
    tar -xzf foundry_nightly_linux_amd64.tar.gz
-   mv -t /usr/local/bin cast forge chisel anvil
+   sudo mv -t /usr/local/bin cast forge chisel anvil
    ```
 
    3. Docker
