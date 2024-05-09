@@ -9,15 +9,103 @@ In this tutorial, we will cover how to launch op-stack along with nodekit stack,
 
 - OS: Ubuntu 22.04 or 24.04
 - Python >=3.9 with `venv` module installed
-- For the local test network:
-  - 7+GiB of free RAM
+- For the EC2 instance:
+  - t2.large preferred(the better the more op chains you can deploy them on)
+  - 100GB disk
   - [Terraform](https://terraform.io) installed (see [Install Terraform](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli))
 - For filtering outputs:
   - [jq](https://stedolan.github.io/jq/) (see [Download jq](https://stedolan.github.io/jq/download/))
-- Nix:
-  - https://nixos.org/
 - nvm: https://github.com/nvm-sh/nvm/blob/master/README.md#installing-and-updating
 - Docker: https://docs.docker.com/engine/install/ubuntu/
+- Golang: 1.21
+
+<details open> 
+   <summary> All above tools can be potentially installed by following commands(click to expand/fold)</summary>
+   1. Node by nvm tool
+
+   ```shell
+   curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+   ```
+
+   2. Foundry tools by foundryup
+
+   ```shell
+   # build from source, which requires cargo to be installed
+   # See: https://www.rust-lang.org/tools/install
+   # curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+   # curl -L https://foundry.paradigm.xyz | bash
+   # source /home/ubuntu/.bashrc
+   # foundryup -C a170021b0e058925047a2c9697ba61f10fc0b2ce
+   
+   # download binaries
+   wget https://github.com/foundry-rs/foundry/releases/download/nightly-f625d0fa7c51e65b4bf1e8f7931cd1c6e2e285e9/foundry_nightly_linux_amd64.tar.gz
+   tar -xzf foundry_nightly_linux_amd64.tar.gz
+   sudo mv -t /usr/local/bin cast forge chisel anvil
+   ```
+
+   3. Docker: you need to relogin the shell after the installation to let the usermod work
+
+   ```shell
+   # Set up Docker's apt repository
+   sudo apt-get update
+   sudo apt-get install ca-certificates curl
+   sudo install -m 0755 -d /etc/apt/keyrings
+   sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+   sudo chmod a+r /etc/apt/keyrings/docker.asc
+   echo \
+   "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+   $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+   sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+   sudo apt-get update
+   # install docker
+   sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+   # add your current user to docker group, so no sudo permission is needed
+   # sudo usermod -aG docker <UESR>
+   sudo usermod -aG docker ubuntu
+   ```
+
+   4. Terraform
+
+   ```shell
+   cd /tmp
+   sudo apt install unzip
+   wget https://releases.hashicorp.com/terraform/1.8.2/terraform_1.8.2_linux_amd64.zip
+   unzip terraform_1.8.2_linux_amd64.zip
+   sudo mv terraform /usr/bin
+   ```
+
+   5. AWS cli
+
+   ```shell
+   curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+   unzip awscliv2.zip
+   sudo ./aws/install
+   ```
+
+   6. make
+
+   ```shell
+   sudo apt install build-essential
+   ```
+
+   7. Golang
+
+   ```shell
+   wget https://go.dev/dl/go1.21.10.linux-amd64.tar.gz
+   sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go1.21.10.linux-amd64.tar.gz
+   echo "export PATH=$PATH:/usr/local/go/bin" >> ~/.profile
+   # refresh path
+   source ~/.profile
+   ```
+
+   8. Python pip and venv
+
+   ```shell
+   sudo apt install python3-pip
+   sudo apt install python3-venv
+   ```
+
+</details>
 
 ## Install dependencies & build docker images
 
@@ -34,11 +122,13 @@ Then,
 **In repository `ansible-avalanche-getting-started`**
 ```shell
 ./bin/setup.sh
+source .venv/bin/activate
+# install ash ansible collections and dependencies
+ansible-galaxy collection install git+https://github.com/AshAvalanche/ansible-avalanche-collection.git,0.12.1-2
+ansible-galaxy install -r ansible_collections/ash/avalanche/requirements.yml
 ```
 
-Manually creating all the virtual machines are needed, there are two potions: 
-1. Run VMs locally with `multipass`
-2. Run VMs provided by AWS
+Manually creating all the virtual machines are needed:
 
 go to repository `ansible-avalanche-getting-started`, 
 
@@ -46,15 +136,22 @@ go to repository `ansible-avalanche-getting-started`,
 terraform -chdir=terraform/aws init
 terraform -chdir=terraform/aws apply
 ```
+***Note that you need to configure aws locally with***
+```
+aws configure sso
+# Optional, set default aws profile for terraform/aws provider to use by
+# example: export AWS_PROFILE=PowerUserAccess-975050373654
+export AWS_PROFILE=<Profile Name>
+```
 
 In folder `op-integration`, 
 
 ```shell
+nvm install
 nvm use
+npm install -g pnpm
 # install dependencies
 pnpm i
-# install foundryrs
-pnpm install:foundry
 # build containers
 cd ops-bedrock
 export COMPOSE_DOCKER_CLI_BUILD=1
