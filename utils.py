@@ -191,7 +191,9 @@ def deployOPL2(opDir: str, l1RPC: str, l1WS: str, seqRPC: str, l2ChainID='45200'
            f'--l1-rpc-url={l1RPC}',
            f"--l1-ws-url={l1WS}",
            f"--seq-url={seqRPC}",
-           f"--l2-chain-id={l2ChainID}"]
+           f"--l2-chain-id={l2ChainID}",
+           f"--l2-provider-url=http://localhost:{19545+portIncrement}"
+           ]
     
     cmdStr = ' '.join(cmd)
     print(cmdStr)
