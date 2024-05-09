@@ -45,7 +45,7 @@ In this tutorial, we will cover how to launch op-stack along with nodekit stack,
    sudo mv -t /usr/local/bin cast forge chisel anvil
    ```
 
-   3. Docker
+   3. Docker: you need to relogin the shell after the installation to let the usermod work
 
    ```shell
    # Set up Docker's apt repository
