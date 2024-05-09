@@ -97,7 +97,7 @@ In this tutorial, we will cover how to launch op-stack along with nodekit stack,
    sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go1.21.10.linux-amd64.tar.gz
    echo "export PATH=$PATH:/usr/local/go/bin" >> ~/.profile
    # refresh path
-   source .profile
+   source ~/.profile
    ```
 
    8. Python pip and venv
