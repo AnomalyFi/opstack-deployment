@@ -70,6 +70,7 @@ In this tutorial, we will cover how to launch op-stack along with nodekit stack,
 
    ```shell
    cd /tmp
+   sudo apt install unzip
    wget https://releases.hashicorp.com/terraform/1.8.2/terraform_1.8.2_linux_amd64.zip
    unzip terraform_1.8.2_linux_amd64.zip
    sudo mv terraform /usr/bin
