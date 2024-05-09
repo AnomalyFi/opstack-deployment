@@ -149,11 +149,11 @@ export AWS_PROFILE=<Profile Name>
 In folder `op-integration`, 
 
 ```shell
+nvm install
 nvm use
+npm install -g pnpm
 # install dependencies
 pnpm i
-# install foundryrs
-pnpm install:foundry
 # build containers
 cd ops-bedrock
 export COMPOSE_DOCKER_CLI_BUILD=1
