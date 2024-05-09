@@ -130,15 +130,20 @@ ansible-galaxy collection install git+https://github.com/AshAvalanche/ansible-av
 ansible-galaxy install -r ansible_collections/ash/avalanche/requirements.yml
 ```
 
-Manually creating all the virtual machines are needed, there are two potions: 
-1. Run VMs locally with `multipass`
-2. Run VMs provided by AWS
+Manually creating all the virtual machines are needed:
 
 go to repository `ansible-avalanche-getting-started`, 
 
 ```shell
 terraform -chdir=terraform/aws init
 terraform -chdir=terraform/aws apply
+```
+***Note that you need to configure aws locally with***
+```
+aws configure sso
+# Optional, set default aws profile for terraform/aws provider to use by
+# example: export AWS_PROFILE=PowerUserAccess-975050373654
+export AWS_PROFILE=<Profile Name>
 ```
 
 In folder `op-integration`, 
