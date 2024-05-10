@@ -5,6 +5,7 @@ from typing_extensions import Annotated
 import utils
 import websockets.sync.client as wsclient
 import logging
+from dotenv import dotenv_values
 
 app = typer.Typer()
 state = {
@@ -22,8 +23,8 @@ state = {
 
     # if manual is enabled, seq and eth ip will be overrided accordingly
     "manual": False,
-    "ethL1IP": '',
-    "seqRPC": '',
+    "ethIP": "localhost",
+    "seqRPCUrl": "http://127.0.0.1:41009/ext/bc/22XkPgahTQDmpe4NpNiydVH1iSp6cyyutgjSapa6wYzCEdMkLy",
 }
 
 
@@ -134,7 +135,7 @@ def deploy_seq():
     
 @app.command()
 def deploy_zk_contracts():
-    l1IP = utils.getEthL1IP(state['terraformWorkingDir'])
+    l1IP = getETHIP()
     ethL1RPC = f'http://{l1IP}:8545'
     utils.deployNodekitZKContracts(state['nodekitZKDir'], ethL1RPC, mnenoic='test test test test test test test test test test test junk')
     addr = utils.getNodekitZKContractAddr(state['nodekitZKDir'])
@@ -149,22 +150,16 @@ def deploy_op_contracts(l2_chain_id='45200'):
 
 @app.command()
 def deploy_nodekit_l1():
-    chainID, ips = utils.getChainInfo(state['ansibleDir'], state['inventoryDir'], state['terraformWorkingDir'])
-    seqRPCUrl = f'http://{ips[0]}:9650/ext/bc/{chainID}'
+    seqRPCUrl, _ = getSeqInfo()
     commitmentAddr = utils.getNodekitZKContractAddr(state['nodekitZKDir'])
-    ethL1IP = utils.getEthL1IP(state['terraformWorkingDir'])
+    ethL1IP = getETHIP()
     ethL1RPC = f'http://{ethL1IP}:8545'
 
     utils.deployNodekitL1(state['nodekitL1Dir'], seqRPCUrl, ethL1RPC, commitmentAddr)
 
 @app.command()
 def deploy_op_l2(l2_chain_id='45200'):
-    if state['manual']:
-        seqRPCURL = state['seqRPC']
-    else:
-        chainID, validatorIPs = utils.getChainInfo(state['ansibleDir'], state['inventoryDir'], state['terraformWorkingDir'])
-        seqRPCURL = f"http://{validatorIPs[0]}:9650/ext/bc/{chainID}"
-
+    seqRPCURL, _ = getSeqInfo()
 
     ethL1IP = getETHIP()
     ethL1RPC = f'http://{ethL1IP}:8545'
@@ -180,7 +175,7 @@ def deploy_op_chain(inc: int = 0):
     ethL1IP = getETHIP()
     ethL1RPC = f'http://{ethL1IP}:8545'
     ethL1WS = f'ws://{ethL1IP}:8546'
-    seqRPCURL = getSeqRPC()
+    seqRPCURL, _ = getSeqInfo()
 
     print('deploying op contracts')
     commitmentAddr = utils.getNodekitZKContractAddr(state['nodekitZKDir'])
@@ -247,14 +242,6 @@ def main(
         prompt="manually input seq info and eth info, usually needed when you deploy the other rollup on another machine", 
         prompt_required=False,
         default=False),
-    eth_ip: str = typer.Option(
-        prompt="eth l1 ip", 
-        prompt_required=False,
-        default='127.0.0.1'),
-    seq_rpc: str = typer.Option(
-        prompt="nodekit seq rpc", 
-        prompt_required=False,
-        default='http://52.206.11.137:9650/ext/bc/2ArqB8j5FWQY9ZBtA3QFJgiH9EmXzbqGup5kuyPQZVZcL913Au'),
     ansibleDir: str = typer.Option(
         prompt="the ansible-avalanche-getting-started repository dir", 
         prompt_required=False,
@@ -292,9 +279,11 @@ def main(
         raise Exception("unsupported cloud provider")
     
     if manual:
-        print(f'using manual mode, setting eth ip to {eth_ip}, seq rpc url to {seq_rpc}')
-        state['ethL1IP'] = eth_ip
-        state['seqRPC'] = seq_rpc
+        conf = dict(dotenv_values('.env'))
+        state['ethIP'] = conf.get('ETH_IP', state['ethIP'])
+        state['seqRPCUrl'] = conf.get('SEQ_RPC_URL', state['seqRPCUrl'])
+
+        print(f'using config from .env: {conf}')
 
     state["ansibleDir"] = ansibleDir
     state['cloudProvider'] = cloudProvider
@@ -304,25 +293,23 @@ def main(
     state['inventoryDir'] = inventoryDir
     state['manual'] = manual
 
+def getSeqInfo():
+    if not state['manual']:
+        chainID, ips = utils.getChainInfo(state['ansibleDir'], state['inventoryDir'], state['terraformWorkingDir'])
+        seqRPCUrl = f'http://{ips[0]}:9650/ext/bc/{chainID}'
+    else:
+        seqRPCUrl: str = state['seqRPCUrl']
+        chainID = seqRPCUrl.split('/')[-1]
+
+    return seqRPCUrl, chainID
 
 def getETHIP():
-    if state['manual']:
-        l1IP = state['ethL1IP']
+    if not state['manual']:
+        ethL1IP = utils.getEthL1IP(state['terraformWorkingDir'])
     else:
-        l1IP = utils.getEthL1IP(state['terraformWorkingDir'])
-
-    return l1IP
-
-@app.command()
-def getSeqRPC():
-    if state['manual']:
-        seqRPCURL = state['seqRPC']
-    else:
-        chainID, validatorIPs = utils.getChainInfo(state['ansibleDir'], state['inventoryDir'], state['terraformWorkingDir'])
-        seqRPCURL = f"http://{validatorIPs[0]}:9650/ext/bc/{chainID}"
+        ethL1IP = state['ethIP']
     
-    print(seqRPCURL)
-    return seqRPCURL
+    return ethL1IP
 
 if __name__ == "__main__":
     app()
