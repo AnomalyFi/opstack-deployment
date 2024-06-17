@@ -11,6 +11,7 @@ app = typer.Typer()
 state = {
     "ansibleDir": "ansible-avalanche-getting-started",
     "opDir": "op-integration",
+    "gethProxyDir": "op-geth-proxy",
     "cloudProvider": "multipass",
     "terraformWorkingDir": "ansible-avalanche-getting-started/terraform/multipass",
     "seqDownloadAddr": "https://github.com/AnomalyFi/nodekit-seq/releases/download",
@@ -182,7 +183,7 @@ def deploy_op_chain(inc: int = 0):
     commitmentAddr = utils.getNodekitZKContractAddr(state['nodekitZKDir'])
     utils.deployContractsOnL1(state['opDir'], ethL1RPC, commitmentAddr, l2ChainID=l2_chain_id)
     print('deploying op l2')
-    utils.deployOPL2(state['opDir'], ethL1RPC, ethL1WS, seqRPCURL, l2ChainID=l2_chain_id, portIncrement=inc)
+    utils.deployOPL2(state['opDir'], state['gethProxyDir'], ethL1RPC, ethL1WS, seqRPCURL, l2ChainID=l2_chain_id, portIncrement=inc)
 
     utils.saveOpDevnetInfo(state['opDir'], state['l2storage'], l2_chain_id)
 
