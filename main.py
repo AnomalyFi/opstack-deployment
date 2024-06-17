@@ -11,6 +11,7 @@ app = typer.Typer()
 state = {
     "ansibleDir": "ansible-avalanche-getting-started",
     "opDir": "op-integration",
+    "gethProxyDir": "op-geth-proxy",
     "cloudProvider": "multipass",
     "terraformWorkingDir": "ansible-avalanche-getting-started/terraform/multipass",
     "seqDownloadAddr": "https://github.com/AnomalyFi/nodekit-seq/releases/download",
@@ -103,6 +104,7 @@ def deploy_seq():
     ethL1IP = utils.getEthL1IP(state['terraformWorkingDir'])
     print('bootstraping avalanchego validators')
     utils.bootstrapValidators(state['ansibleDir'], state['inventoryDir'])
+    # TODO: update this to query is bootstrapped by a http call, see: https://ash.center/docs/toolkit/ansible-avalanche-collection/tutorials/local-test-network#issue-api-calls
     # wait bootstraping to be stable
     print('boostraping finished, waiting 30s to let it become stable to bootstrap a subnet')
     time.sleep(30)
@@ -181,7 +183,7 @@ def deploy_op_chain(inc: int = 0):
     commitmentAddr = utils.getNodekitZKContractAddr(state['nodekitZKDir'])
     utils.deployContractsOnL1(state['opDir'], ethL1RPC, commitmentAddr, l2ChainID=l2_chain_id)
     print('deploying op l2')
-    utils.deployOPL2(state['opDir'], ethL1RPC, ethL1WS, seqRPCURL, l2ChainID=l2_chain_id, portIncrement=inc)
+    utils.deployOPL2(state['opDir'], state['gethProxyDir'], ethL1RPC, ethL1WS, seqRPCURL, l2ChainID=l2_chain_id, portIncrement=inc)
 
     utils.saveOpDevnetInfo(state['opDir'], state['l2storage'], l2_chain_id)
 

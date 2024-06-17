@@ -124,7 +124,7 @@ Then,
 ./bin/setup.sh
 source .venv/bin/activate
 # install ash ansible collections and dependencies
-ansible-galaxy collection install git+https://github.com/AshAvalanche/ansible-avalanche-collection.git,0.12.1-2
+ansible-galaxy collection install git+https://github.com/AshAvalanche/ansible-avalanche-collection.git,v0.13.0
 ansible-galaxy install -r ansible_collections/ash/avalanche/requirements.yml
 ```
 
