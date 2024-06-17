@@ -103,6 +103,7 @@ def deploy_seq():
     ethL1IP = utils.getEthL1IP(state['terraformWorkingDir'])
     print('bootstraping avalanchego validators')
     utils.bootstrapValidators(state['ansibleDir'], state['inventoryDir'])
+    # TODO: update this to query is bootstrapped by a http call, see: https://ash.center/docs/toolkit/ansible-avalanche-collection/tutorials/local-test-network#issue-api-calls
     # wait bootstraping to be stable
     print('boostraping finished, waiting 30s to let it become stable to bootstrap a subnet')
     time.sleep(30)

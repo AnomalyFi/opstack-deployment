@@ -87,7 +87,12 @@ def updateTrackedSubnetNChainConfig(ansibleDir: str, inventoryDir: str, subnetID
         nodeConf['avalanchego_chains_configs'][chainID] = {
             'ethRPCAddr': f'http://{ethl1IP}:8545',
             'ethWSAddr': f'ws://{ethl1IP}:8546',
-            'mempoolSize': 256
+            'mempoolSize': 256,
+            'archiverConfig': {
+                'enabled': True,
+                'archiverType': 'sqlite',
+                'dsn': '/tmp/default.db',
+            }
         }
 
         # clean existing content
