@@ -233,7 +233,7 @@ def testOPL2(opDir: str, storage: str, l1RPC: str, additionalPath='', portIncrem
            '--test',
            f'--l1-rpc-url={l1RPC}',
            f'--devnet-dir={devnetDir}', # to correctly populate addresses.json path
-           f"--l2-provider-url=http://localhost:{19545+portIncrement}",
+           f"--l2-provider-url=http://localhost:{9090+portIncrement}", # set to port of geth proxy
            f"--additional-path={additionalPath}"
            ]
     
