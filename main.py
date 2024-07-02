@@ -16,6 +16,7 @@ state = {
     "seqDownloadAddr": "https://github.com/AnomalyFi/nodekit-seq/releases/download",
     "seqVersion": "0.9.5",
     "inventoryDir": "inventories/local",
+    "gethProxyDir": "op-geth-proxy",
     "nodekitL1Dir": "nodekit-l1",
     "nodekitZKDir": "nodekit-zk",
     "mnenoic": "test test test test test test test test test test test junk",
@@ -168,10 +169,10 @@ def deploy_op_l2(l2_chain_id='45200'):
     utils.deployOPL2(state['opDir'], ethL1RPC, ethL1WS, seqRPCURL, l2ChainID=l2_chain_id)
 
 @app.command()
-def test_op_l2(inc='0'):
+def test_op_l2(inc='0', nvmPath=''):
     l1IP = getETHIP()
     l1RPC = f'http://{l1IP}:8545'
-    utils.testOPL2(state['opDir'], state['l2storage'], l1RPC=l1RPC, portIncrement=int(inc))
+    utils.testOPL2(state['opDir'], state['l2storage'], l1RPC=l1RPC, additionalPath=nvmPath, portIncrement=int(inc))
 
 @app.command()
 def deploy_op_chain(inc: int = 0):
@@ -187,7 +188,7 @@ def deploy_op_chain(inc: int = 0):
     commitmentAddr = utils.getNodekitZKContractAddr(state['nodekitZKDir'])
     utils.deployContractsOnL1(state['opDir'], ethL1RPC, commitmentAddr, l2ChainID=l2_chain_id)
     print('deploying op l2')
-    utils.deployOPL2(state['opDir'], ethL1RPC, ethL1WS, seqRPCURL, l2ChainID=l2_chain_id, portIncrement=inc)
+    utils.deployOPL2(state['opDir'], state['gethProxyDir'], ethL1RPC, ethL1WS, seqRPCURL, l2ChainID=l2_chain_id, portIncrement=inc)
 
     utils.saveOpDevnetInfo(state['opDir'], state['l2storage'], l2_chain_id)
 

@@ -10,3 +10,6 @@
 [submodule "nodekit-l1"]
 	path = nodekit-l1
 	url = https://github.com/AnomalyFi/nodekit-l1
+[submodule "op-geth-proxy"]
+	path = op-geth-proxy
+	url = https://github.com/AnomalyFi/op-geth-proxy

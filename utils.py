@@ -183,7 +183,7 @@ def deployNodekitZKContracts(nodekitZKDir: str, l1PRC: str, mnenoic: str):
 # --l1-rpc-url="http://10.153.238.182:8545" 
 # --l1-ws-url="ws://10.153.238.182:8546"
 # --seq-url="http://10.153.238.150:9650/ext/bc/24ummBEhg4mA8DV1ojNjpHpQVipSiVZUB1zhcmgLF7woWFmgDz"
-def deployOPL2(opDir: str, l1RPC: str, l1WS: str, seqRPC: str, l2ChainID='45200', portIncrement=0):
+def deployOPL2(opDir: str, gethProxyDir: str, l1RPC: str, l1WS: str, seqRPC: str, l2ChainID='45200', portIncrement=0):
     cmd = ['python', 
            'bedrock-devnet/main.py', 
            '--monorepo-dir=.', 
@@ -209,17 +209,32 @@ def deployOPL2(opDir: str, l1RPC: str, l1WS: str, seqRPC: str, l2ChainID='45200'
 
     if sub.returncode != 0:
         raise Exception(f"unable to deploy contracts on ETH L1, reason: {sub.stderr}")
+    
+    configureOpGethProxy(gethProxyDir, seqRPC, portIncrement)
+    
+    cmd = ['docker', 'compose', 'up', '-d']
+    sub = run_command(
+        cmd,
+        stderr=sys.stderr,
+        stdout=sys.stdout,
+        cwd=gethProxyDir,
+        env={
+            'COMPOSE_PROJECT_NAME': f'proxy-{l2ChainID}'
+        }
+    )
 
-def testOPL2(opDir: str, storage: str, l1RPC: str, portIncrement=0):
+def testOPL2(opDir: str, storage: str, l1RPC: str, additionalPath='', portIncrement=0):
     chainID = 45200 + portIncrement
-    devnetDir = pjoin(f'{storage}/{chainID}')
+    pwd = os.getcwd()
+    devnetDir = pjoin(pwd, f'{storage}/{chainID}')
     cmd = ['python', 
            'bedrock-devnet/main.py', 
            '--monorepo-dir=.', 
            '--test',
            f'--l1-rpc-url={l1RPC}',
            f'--devnet-dir={devnetDir}', # to correctly populate addresses.json path
-           f"--l2-provider-url=http://localhost:{19545+portIncrement}"
+           f"--l2-provider-url=http://localhost:{19545+portIncrement}",
+           f"--additional-path={additionalPath}"
            ]
     
     cmdStr = ' '.join(cmd)
@@ -232,6 +247,7 @@ def testOPL2(opDir: str, storage: str, l1RPC: str, portIncrement=0):
         stderr=sys.stderr,
         stdout=sys.stdout,
         cwd=opDir,
+        shell=True
     )
 
     if sub.returncode != 0:
@@ -433,6 +449,28 @@ def configureOPL2Port(opDir: str, portIncrement=0):
         for key in defaultPortMapping:
             f.write(f'{key}={defaultPortMapping[key]}\n')
 
+def configureOpGethProxy(gethProxyDir: str, seqRpc: str, portIncrement=0):
+    envPath = pjoin(gethProxyDir, '.env')
+
+    l2ChainID = 45200 + portIncrement
+    seqChainID = seqRpc.split('/')[-1]
+
+    config={
+        'OP1_GETH_PROXY_PORT': f'{9090+portIncrement}',
+        'OP1_L2_ADDR': f'http://host.docker.internal:{19545+portIncrement}',
+        'OP1_CHAIN_ID': f'{l2ChainID}',
+        'SEQ_CHAIN_ID': seqChainID,
+        'SEQ_ADDR': seqRpc,
+        'RETRY': '3',
+    }
+    
+    write_dotenv_conf_to(config, envPath)
+
+
+def write_dotenv_conf_to(conf, fname):
+    with open(fname, 'w') as f:
+        for key in conf:
+            f.write(f'{key}={conf[key]}\n')
 
 def ensureDir(dir: str):
     if not os.path.exists(dir):
