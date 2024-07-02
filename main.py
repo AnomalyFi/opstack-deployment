@@ -168,6 +168,12 @@ def deploy_op_l2(l2_chain_id='45200'):
     utils.deployOPL2(state['opDir'], ethL1RPC, ethL1WS, seqRPCURL, l2ChainID=l2_chain_id)
 
 @app.command()
+def test_op_l2(inc='0'):
+    l1IP = getETHIP()
+    l1RPC = f'http://{l1IP}:8545'
+    utils.testOPL2(state['opDir'], state['l2storage'], l1RPC=l1RPC, portIncrement=int(inc))
+
+@app.command()
 def deploy_op_chain(inc: int = 0):
     l2_chain_id = str(45200 + inc)
     print(f'deploying op chain with chainID: {l2_chain_id}')

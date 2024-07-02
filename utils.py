@@ -210,6 +210,33 @@ def deployOPL2(opDir: str, l1RPC: str, l1WS: str, seqRPC: str, l2ChainID='45200'
     if sub.returncode != 0:
         raise Exception(f"unable to deploy contracts on ETH L1, reason: {sub.stderr}")
 
+def testOPL2(opDir: str, storage: str, l1RPC: str, portIncrement=0):
+    chainID = 45200 + portIncrement
+    devnetDir = pjoin(f'{storage}/{chainID}')
+    cmd = ['python', 
+           'bedrock-devnet/main.py', 
+           '--monorepo-dir=.', 
+           '--test',
+           f'--l1-rpc-url={l1RPC}',
+           f'--devnet-dir={devnetDir}', # to correctly populate addresses.json path
+           f"--l2-provider-url=http://localhost:{19545+portIncrement}"
+           ]
+    
+    cmdStr = ' '.join(cmd)
+    print(cmdStr)
+    configureOPL2Port(opDir, portIncrement)
+    sub = run_command(
+        # ['nix-shell', '--run', cmdStr],
+        cmd,
+        capture_output=False,
+        stderr=sys.stderr,
+        stdout=sys.stdout,
+        cwd=opDir,
+    )
+
+    if sub.returncode != 0:
+        raise Exception(f"unable to deploy contracts on ETH L1, reason: {sub.stderr}")
+
 def clean_op_deployment_temp_files(opDir: str):
     tempfile_dir = pjoin(opDir, '.devnet')
     os.system(f'rm {tempfile_dir}/*') 
