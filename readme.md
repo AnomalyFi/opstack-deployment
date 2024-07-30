@@ -156,6 +156,7 @@ pnpm i
 cd ops-bedrock
 export COMPOSE_DOCKER_CLI_BUILD=1
 export DOCKER_BUILDKIT=1
+docker compose build op_stack_go_builder
 docker compose build
 ```
 
