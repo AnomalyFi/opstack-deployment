@@ -13,3 +13,6 @@
 [submodule "op-geth-proxy"]
 	path = op-geth-proxy
 	url = https://github.com/AnomalyFi/op-geth-proxy
+[submodule "javelin-op-stack"]
+	path = javelin-op-stack
+	url = https://github.com/AnomalyFi/javelin-op-stack
