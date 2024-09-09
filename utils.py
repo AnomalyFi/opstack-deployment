@@ -184,6 +184,10 @@ def deployNodekitZKContracts(nodekitZKDir: str, l1PRC: str, mnenoic: str):
 # --l1-ws-url="ws://10.153.238.182:8546"
 # --seq-url="http://10.153.238.150:9650/ext/bc/24ummBEhg4mA8DV1ojNjpHpQVipSiVZUB1zhcmgLF7woWFmgDz"
 def deployOPL2(opDir: str, gethProxyDir: str, l1RPC: str, l1WS: str, seqRPC: str, l2ChainID='45200', portIncrement=0):
+    subnet = [172, 20]
+    subnet[1] += portIncrement
+    subnetStr = '.'.join([str(x) for x in subnet])
+
     cmd = ['python', 
            'bedrock-devnet/main.py', 
            '--monorepo-dir=.', 
@@ -192,7 +196,8 @@ def deployOPL2(opDir: str, gethProxyDir: str, l1RPC: str, l1WS: str, seqRPC: str
            f"--l1-ws-url={l1WS}",
            f"--seq-url={seqRPC}",
            f"--l2-chain-id={l2ChainID}",
-           f"--l2-provider-url=http://localhost:{19545+portIncrement}"
+           f"--l2-provider-url=http://localhost:{19545+portIncrement}",
+           f"--subnet={subnetStr}"
            ]
     
     cmdStr = ' '.join(cmd)
@@ -435,10 +440,16 @@ def configureOPL2Port(opDir: str, portIncrement=0):
     envPath = pjoin(opDir, 'ops-bedrock/.env')
 
     defaultPortMapping = {
+        'OP1_CHAIN_ID': 45200,
         'OP1_L2_RPC_PORT': 19545,
+        'OP1_L2_P2P_PORT': 30303,
         'OP1_NODE_RPC_PORT': 18545,
+        'OP1_NODE_P2P_PORT': 40404,
         'OP1_BATCHER_RPC_PORT': 17545,
         'OP1_PROPOSER_RPC_PORT': 16545,
+        'OP1_GETH_PROXY_PORT': 9090,
+        'OPNODE_BUILDER_RPC': 28500,
+        'BUILDER_RPC_PORT': 15545,
     }
 
     for key in defaultPortMapping:

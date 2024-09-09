@@ -120,7 +120,7 @@ def deploy_seq():
     seqRPCURL = f"http://{validatorIPs[0]}:9650/ext/bc/{chainID}"
 
     # default timeout is 10(times) x 5s
-    seqIsUp = utils.wait_seq(seqRPCURL)
+    seqIsUp = utils.wait_seq(seqRPCURL, retry=30)
     cnt = 0
     retry = 3
     # must restart avalanchego at least once
